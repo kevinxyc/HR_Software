@@ -1,6 +1,6 @@
 
 
-***Program Functinalities***
+***Program Functionalities***
 
 1. Payroll
 2. Record editing

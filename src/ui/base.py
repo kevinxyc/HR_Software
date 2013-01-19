@@ -1,10 +1,29 @@
-## @package ui_sys
-#  UI subsystem.
+## @package base
+#  UI subsystem base.
 #  This module exports a symbol called ui that is a Window
 #  @see Window
 
 
-class Box(Object):
+import defs as HRP
+import wx
+from ui import hr_app
+
+def launch_win(win):
+    """    
+    The main event loop for this Window. The window will repetitively recieve events/dispatch it
+    in this loop.
+    @note This function will not return until the current Window is closed
+    @param win The main Window to display
+    @return None
+    """
+    global hr_app
+    win.Show()
+    hr_app.SetTopWindow(win)
+    hr_app.MainLoop()
+
+
+
+class Box(object):
     """
     A Box is the base unit of display
     In accordance with the box model, a box can be layered and positioned
@@ -37,10 +56,17 @@ class Box(Object):
         pass
     
 
-class Window(Box):
+class Window(wx.Frame,Box):
     """
     A Window is a special box at the top level    
-    """            
+    """
+
+    def __init__(self, title=HRP.WIN_TITLE):
+        #(parent, id, title)
+        wx.Frame.__init__(self, None, -1, title)
+        self._panes = []
+        self._sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self._pidx = -1
 
     def style(self, style):
         """
@@ -61,21 +87,27 @@ class Window(Box):
         """        
         pass
 
-    def addPane(self, p):
+    def addPane(self, p, show=True):
         """
         void addPane(Panel p)
         Adds panel to panel layer. Only one panel may be displayed at a time.
-        @param p The panel ID/Object ref
+        @param p The panel ID/object ref
         @return None
-        """        
-        pass
+        """
+        #(wxWindow, proportion, flag)
+        self._sizer.Add(p, 1, wx.EXPAND)
+        self._panes.append(p)
+        if show:
+            self.show(p)
+        else:
+            p.Hide()
 
     
     def rmPane(self, p):
         """
         void rmPane(Panel p)
         Removes a panel layer. Only one panel may be displayed at a time.
-        @param p The panel ID/Object ref
+        @param p The panel ID/object ref
         @return None
         """        
         pass
@@ -84,67 +116,25 @@ class Window(Box):
         """
         void show(Panel p)
         Show the panel given
-        @param p The panel ID/Object ref
+        @param p The panel ID/object ref
         @return None
         """
-        pass
-    
-    def dispatch_event(self, block):
-        """    
-        void dispatch_event(int block)
-        The main event loop for this Window. The window will recieve events/dispatch it
-        in this loop. Calling this function does one iteration of this task.
-        @param block If false and no events need dispatching, then the function returns immediately.
-        @return None
-        """        
-        pass
+        pids = map(lambda p: p.GetID(), self._panes)
+        if type(p) == int and p not in pids :
+            return
+        if p.GetID() not in pids:
+            return
+        
+        if self._pidx >= 0:
+            self._panes[self._pidx].Hide()
+        p.Show()
+        self.Layout()
+
+        self._pidx = self._panes.index(p.GetID())
+        
 
 
-class Panel(Box):
-    """
-    A Panel object is a display layer or "page" that contains an assortment of children elements
-    and boxen
-    """
-    
-    ##@var mode
-    # int - Current state: Hidden(0), Showing(1)
-
-    ##@var zindex
-    # int - The stack priority in the box model
-
-    ##@var style
-    # int - Style for the panel
-    
-    def __init__(self):
-        self.mode = 0
-        self.zindex = 0
-        self.style = 0
-
-    def addBox(self, b, x, y):
-        """
-        @brief Add a box to the panel
-        @param b The box to add
-        @param x Suggested X position 
-        @param y Suggested Y position
-        @return int - sucess/fail
-        """
-        pass
-
-    def rmBox(self, b):
-        """
-        @brief Remove the given box from the panel
-        @param b The box ID/Object ref to remove
-        @return int - success/fail
-        """
-        pass
-
-    def focus(self):
-        """
-        @brief Focus on the panel (brings parents into focus also)
-        @return void
-        """
-
-class Element(Object):
+class Element(object):
     """
     An Element object represents a piece of information to be displayed on screen.
     """

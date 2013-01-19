@@ -61,7 +61,7 @@ class Window(wx.Frame,Box):
     A Window is a special box at the top level    
     """
 
-    def __init__(self, title=HRP.WIN_TITLE):
+    def __init__(self, title):
         #(parent, id, title)
         wx.Frame.__init__(self, None, -1, title)
         self._panes = []

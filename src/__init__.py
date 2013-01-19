@@ -1,7 +1,5 @@
-import sys
-sys.path.insert(0, ".")
+import ui.base as ui
+import defs as HRP
 
-import ui.ui_sys as ui
-
-win = ui.Window()
+win = ui.Window(HRP.WIN_TITLE)
 ui.launch_win(win)

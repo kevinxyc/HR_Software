@@ -1,3 +1,5 @@
+
+import wx
 from base import *
 
 class Panel(wx.Panel,Box):
@@ -15,7 +17,7 @@ class Panel(wx.Panel,Box):
     ##@var style
     # int - Style for the panel
     
-    def __init__(self, parent, style):
+    def __init__(self, parent, slug, **args):
         """
         @param parent The container of the Panel
         """
@@ -23,7 +25,9 @@ class Panel(wx.Panel,Box):
         wx.Panel.__init__(self, parent=parent);
         self.mode = 0
         self.zindex = 0
-        self.style = style
+        self.style = 0 if 'style' not in args else args['style']
+        self._slug = slug
+        self._parent = parent
 
     def addBox(self, b, x, y):
         """
@@ -34,6 +38,9 @@ class Panel(wx.Panel,Box):
         @return int - sucess/fail
         """
         pass
+
+    def get_slug(self):
+        return self._slug.lower()
 
     def rmBox(self, b):
         """
@@ -48,3 +55,29 @@ class Panel(wx.Panel,Box):
         @brief Focus on the panel (brings parents into focus also)
         @return void
         """
+
+
+class TextPanel(Panel):
+    """
+    A panel that contains only a scrollable label that can display a text passage
+    of any length.
+    """
+
+    def __init__(self, parent, slug, text):
+        """
+        @note ...
+        """
+        Panel.__init__(self, parent, slug)
+        v0 = wx.BoxSizer(wx.VERTICAL)
+        self._disp = wx.TextCtrl(self, -1, style=wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_NOHIDESEL)
+        self._disp.SetBackgroundColour(self.GetBackgroundColour())
+        self.setText(text)
+        v0.Add(self._disp, 1, wx.EXPAND)
+        self.SetSizer(v0)
+
+        
+    def setText(self, text):
+        """
+        @param text The text to display on the main display label
+        """
+        self._disp.SetValue(text)

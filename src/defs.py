@@ -1,2 +1,5 @@
 
 WIN_TITLE = "HR Management Software"
+VMENU_COL_WIDTH = 60
+VMENU_COL_COUNT = 2
+TERM_HEIGHT = 90

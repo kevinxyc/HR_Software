@@ -3,9 +3,8 @@
 #  This module exports a symbol called ui that is a Window
 #  @see Window
 
-
-import defs as HRP
 import wx
+import defs as HRP
 from ui import hr_app
 
 def launch_win(win):
@@ -20,7 +19,6 @@ def launch_win(win):
     win.Show()
     hr_app.SetTopWindow(win)
     hr_app.MainLoop()
-
 
 
 class Box(object):
@@ -49,10 +47,10 @@ class Box(object):
         self.h = 0        
 
     def draw(self, container):
-        """    
+        """
         void draw(Box container)
         @param container Draws box within the container. If container is none, then the box is simply redrawn.
-        """        
+        """       
         pass
     
 
@@ -65,8 +63,55 @@ class Window(wx.Frame,Box):
         #(parent, id, title)
         wx.Frame.__init__(self, None, -1, title)
         self._panes = []
-        self._sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self._navbtns = []
         self._pidx = -1
+
+        h0 = wx.BoxSizer(wx.HORIZONTAL)
+        v1 = wx.BoxSizer(wx.VERTICAL)
+        v1v0 = wx.BoxSizer(wx.VERTICAL)
+
+        #Quick function switcher + Helper board
+        self._vmenu = wx.Panel(self, -1)
+        vmenusize = (HRP.VMENU_COL_WIDTH*HRP.VMENU_COL_COUNT,-1)
+        self._vmenu.SetMinSize(vmenusize)
+        self._vmenu.SetMaxSize(vmenusize)
+        self._vmenu._sizer = wx.GridSizer(0, HRP.VMENU_COL_COUNT, 0, 0)
+        self._vmenu.SetSizer(self._vmenu._sizer)
+        h0.Add(self._vmenu, 0, wx.ALIGN_LEFT | wx.EXPAND)
+
+        #Top panel board + Bottom terminal
+        self._term = wx.TextCtrl(self, -1, style=wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_RICH | wx.TE_CHARWRAP | wx.TE_READONLY)
+        self._term.SetMinSize((-1,HRP.TERM_HEIGHT))
+        v1.Add(v1v0, 1, wx.EXPAND | wx.ALIGN_TOP)
+        v1.Add(self._term, 0.3, wx.EXPAND | wx.ALIGN_BOTTOM)
+        h0.Add(v1, 1, wx.EXPAND | wx.ALIGN_RIGHT)
+
+        #Create log
+        self._log = wx.LogTextCtrl(self._term)
+        self._log.write = self._log.LogText
+        
+        self._sizer = v1v0
+        self.SetSizer(h0)
+
+        #Menubar at top of program Window
+        self._menu = wx.MenuBar()
+        mfile = wx.Menu()
+        self._menu.Append(mfile, "&File")
+        self.SetMenuBar(self._menu)
+
+    def OnResize(self, e):
+        """
+        @brief 
+        @param e The SizeEvent
+        """
+        pass
+
+    def GetStdOut(self):
+        """
+        @brief Gets an object that outputs text to someplace in the Window
+        @return Object with write() method
+        """
+        return self._log
 
     def style(self, style):
         """
@@ -94,9 +139,17 @@ class Window(wx.Frame,Box):
         @param p The panel ID/object ref
         @return None
         """
-        #(wxWindow, proportion, flag)
-        self._sizer.Add(p, 1, wx.EXPAND)
+        import os
+        img = wx.Image(os.sep.join([".", "icons", p.get_slug()+".png"]), wx.BITMAP_TYPE_PNG).Scale(40, 40, wx.IMAGE_QUALITY_HIGH).ConvertToBitmap()
+        b = wx.BitmapButton(self._vmenu, -1, img, style=0)
+        b.SetBackgroundColour(self._vmenu.GetBackgroundColour())
+        win = self
+        b.Bind(wx.EVT_BUTTON, lambda e: win.show(p))
+        self._vmenu._sizer.Add(b, 0)
+
+        self._sizer.Insert(0, p, 1, wx.ALIGN_LEFT | wx.EXPAND)
         self._panes.append(p)
+        self._navbtns.append(b)
         if show:
             self.show(p)
         else:
@@ -119,18 +172,20 @@ class Window(wx.Frame,Box):
         @param p The panel ID/object ref
         @return None
         """
-        pids = map(lambda p: p.GetID(), self._panes)
+        pids = map(lambda p: p.GetId(), self._panes)
         if type(p) == int and p not in pids :
             return
-        if p.GetID() not in pids:
+        if p.GetId() not in pids:
             return
         
+        self.Freeze()
         if self._pidx >= 0:
             self._panes[self._pidx].Hide()
         p.Show()
         self.Layout()
-
-        self._pidx = self._panes.index(p.GetID())
+        self.Thaw()
+        
+        self._pidx = pids.index(p.GetId())
         
 
 

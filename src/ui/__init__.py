@@ -1,5 +1,9 @@
 
 import wx
+import warnings
 
 hr_app = wx.App(False)
-wx.Image.AddHandler(wx.PNGHandler())
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    wx.InitAllImageHandlers()

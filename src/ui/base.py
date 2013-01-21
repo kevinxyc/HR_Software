@@ -52,7 +52,23 @@ class Box(object):
         @param container Draws box within the container. If container is none, then the box is simply redrawn.
         """       
         pass
-    
+
+class Popup(wx.Frame,Box):
+    """
+    A pop window
+    """
+    def __init__(self, parent, title, **args):
+        wx.Frame.__init__(self, parent, -1, title, **args)
+        self._sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.SetSizer(self._sizer)
+
+    def show_panel(self, p):
+        p.Reparent(self)
+        p.Show()
+        self._sizer.Clear(False)
+        self._sizer.Add(p, 1, wx.EXPAND)
+        self.Layout()
+
 
 class Window(wx.Frame,Box):
     """
@@ -77,7 +93,7 @@ class Window(wx.Frame,Box):
         self._vmenu.SetMaxSize(vmenusize)
         self._vmenu._sizer = wx.GridSizer(0, HRP.VMENU_COL_COUNT, 0, 0)
         self._vmenu.SetSizer(self._vmenu._sizer)
-        h0.Add(self._vmenu, 0, wx.ALIGN_LEFT | wx.EXPAND)
+        h0.Add(self._vmenu, 0, wx.ALIGN_LEFT)
 
         #Top panel board + Bottom terminal
         self._term = wx.TextCtrl(self, -1, style=wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_RICH | wx.TE_CHARWRAP | wx.TE_READONLY)
@@ -98,6 +114,10 @@ class Window(wx.Frame,Box):
         mfile = wx.Menu()
         self._menu.Append(mfile, "&File")
         self.SetMenuBar(self._menu)
+
+        self.SetBackgroundColour(self._vmenu.GetBackgroundColour())
+        self.SetMinSize((600,400))
+        self.Fit()
 
     def OnResize(self, e):
         """
@@ -121,71 +141,158 @@ class Window(wx.Frame,Box):
         """
         pass
 
+    def popup(self, p, title):
+        """
+        @brief Creates a popup frame with the given panel and title
+        @param p The panel to show on this frame
+        @param title The string title to use
+        @note If the panel is already added onto the current window, then it will
+              be temporary removed and restored when the popup is closed
+        @return None
+        """
+        d = Popup(self, title)
+        idx = self.has_panel(p)
+        if self.has_panel(p):
+            self.rm_panel(p)
+            win = self
+            d.Bind(wx.EVT_CLOSE, lambda e: d.Destroy() and win.insert_panel(idx, p))
+        d.show_panel(p)
+        d.Show()
 
-    def dialoge(self, msg, type):
+    def dialog(self, t, **args):
         """    
         mixed dialoge(String msg, int type)
         Creates a dialoge box of a given type with the given message.
         @param msg The message to display
-        @param type
-        @return The response given (depends on type)
-        """        
-        pass
-
-    def addPane(self, p, show=True):
+        @param t A string describing the type of dialog
+        @return The response given (depends on type) or None if failed
         """
-        void addPane(Panel p)
-        Adds panel to panel layer. Only one panel may be displayed at a time.
+        dtype = t+"Dialog"
+        res = None
+        if hasattr(wx, dtype):
+            if 'caption' not in args:
+                args['caption'] = args['message']
+            cls = getattr(wx, dtype)
+            dlg = cls(self, **args)
+            res = dlg.ShowModal()
+            if  res == wx.ID_OK:
+                resf = ['GetValue', 'GetFilenames', 'GetPath', 'GetData', 'GetSelections', 'GetStringSelection']
+                for f in resf:
+                    if hasattr(dlg, f):
+                        res = getattr(dlg, f)()
+                        break
+            else:
+                resn = { wx.ID_OK:"OK", wx.ID_NO:"NO", wx.ID_YES:"YES", wx.ID_CANCEL:"CANCEL" }
+                if res in resn:
+                    res = resn[res]
+                else:
+                    res = None
+            dlg.Destroy()
+        return res
+
+
+    def has_panel(self, p, pids=[]):
+        """
+        @brief Checks if the panel given is within the panel list
         @param p The panel ID/object ref
-        @return None
+        @return index of panel in the list or -1 if not found
+        """
+        pids.extend(map(lambda p: p.GetId(), self._panes))
+        if type(p) == int and p not in pids :
+            return -1
+        if p.GetId() not in pids:
+            return -1
+        return pids.index(p.GetId())
+
+
+    def add_panel(self, p, show=False):
+        return self.insert_panel(len(self._panes), p, show)        
+    
+    def insert_panel(self, pos, p, show=False):
+        """
+        @brief Adds panel to the panel list. Only one panel may be displayed at a time.
+        @param p The panel ID/object ref
+        @return Boolean indicating success
         """
         import os
-        img = wx.Image(os.sep.join([".", "icons", p.get_slug()+".png"]), wx.BITMAP_TYPE_PNG).Scale(40, 40, wx.IMAGE_QUALITY_HIGH).ConvertToBitmap()
-        b = wx.BitmapButton(self._vmenu, -1, img, style=0)
+
+        if p.GetParent().GetId() != self.GetId():
+            p.Reparent(self)
+
+        w = HRP.VMENU_COL_WIDTH
+        img = wx.Image(os.sep.join([".", "icons", p.get_slug()+".png"]), wx.BITMAP_TYPE_PNG).Scale(w, w, wx.IMAGE_QUALITY_HIGH).ConvertToBitmap()
+        b = wx.BitmapButton(self._vmenu, -1, img, style=wx.NO_BORDER)
         b.SetBackgroundColour(self._vmenu.GetBackgroundColour())
         win = self
-        b.Bind(wx.EVT_BUTTON, lambda e: win.show(p))
-        self._vmenu._sizer.Add(b, 0)
+        b.Bind(wx.EVT_BUTTON, lambda e: win.show_panel(p))
+        self._vmenu._sizer.Insert(pos, b, 0)
 
-        self._sizer.Insert(0, p, 1, wx.ALIGN_LEFT | wx.EXPAND)
-        self._panes.append(p)
-        self._navbtns.append(b)
+        if pos <= self._pidx:
+            self._pidx = self._pidx + 1
+        
+        self._sizer.Insert(pos, p, 1, wx.ALIGN_LEFT | wx.EXPAND)
+        self._panes.insert(pos, p)
+        self._navbtns.insert(pos, b)
+
         if show:
-            self.show(p)
+            self.show_panel(p)
         else:
             p.Hide()
+        self.Layout()
 
+        return True
     
-    def rmPane(self, p):
+    def rm_panel(self, p):
         """
-        void rmPane(Panel p)
-        Removes a panel layer. Only one panel may be displayed at a time.
+        @brief Removes a panel from the list. Only one panel may be displayed at a time.
         @param p The panel ID/object ref
-        @return None
-        """        
-        pass
-    
-    def show(self, p):
+        @return Boolean indicating success (False if the panel was not added in the first place)
         """
-        void show(Panel p)
-        Show the panel given
-        @param p The panel ID/object ref
-        @return None
-        """
-        pids = map(lambda p: p.GetId(), self._panes)
-        if type(p) == int and p not in pids :
-            return
-        if p.GetId() not in pids:
-            return
+        idx = self.has_panel(p)
+        if self._pidx == idx:
+            if idx > 0:
+                self.show_panel(self._panes[idx-1])
+            else:
+                self._pidx = -1
+
+        if self._pidx > idx:
+            self._pidx = self._pidx - 1
+
+        if idx >= 0:
+            self.Freeze()
+            b = self._navbtns.pop(idx)
+            p = self._panes.pop(idx)
+            self._sizer.Detach(p)
+            self._vmenu._sizer.Detach(b)
+            b.Destroy()
+            self.Layout()
+            self.Thaw()
+            return True
+        else:
+            return False
         
+
+    def show_panel(self, p):
+        """
+        @brief Show the panel given on the main display section
+        @param p The panel ID/object ref
+        @return Boolean indicating success
+        """
+        pids = []
+        if self.has_panel(p, pids) < 0:
+            return False
+                    
         self.Freeze()
         if self._pidx >= 0:
             self._panes[self._pidx].Hide()
+            self._navbtns[self._pidx].SetBackgroundColour(self._vmenu.GetBackgroundColour())
         p.Show()
-        self.Layout()
+        self._sizer.Layout()
         self.Thaw()
         
         self._pidx = pids.index(p.GetId())
+        self._navbtns[self._pidx].SetBackgroundColour(HRP.VMENU_SELECTED_COLOUR)
+        return True
         
 
 

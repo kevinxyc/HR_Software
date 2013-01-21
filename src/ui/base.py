@@ -53,9 +53,28 @@ class Box(object):
         """       
         pass
 
+class Element(object):
+    """
+    An Element object represents a piece of information to be displayed on screen.
+    """
+
+    ##@var type
+    # int - Type of data
+
+    ##@var value
+    # mixed - Value of data
+
+    ##@var ord
+    # int - Order of data (Where the data belongs on the list)
+
+    def __init__(self):
+        self.type = 0
+        self.value = 0
+        self.ord = 0    
+
 class Popup(wx.Frame,Box):
     """
-    A pop window
+    A popup window
     """
     def __init__(self, parent, title, **args):
         wx.Frame.__init__(self, parent, -1, title, **args)
@@ -206,11 +225,16 @@ class Window(wx.Frame,Box):
 
 
     def add_panel(self, p, show=False):
+        """
+        @brief Adds panel to the panel list. Only one panel may be displayed at a time.
+        @param p The panel ID/object ref
+        @return Boolean indicating success
+        """        
         return self.insert_panel(len(self._panes), p, show)        
     
     def insert_panel(self, pos, p, show=False):
         """
-        @brief Adds panel to the panel list. Only one panel may be displayed at a time.
+        @brief Inserts panel intto the panel list. Only one panel may be displayed at a time.
         @param p The panel ID/object ref
         @return Boolean indicating success
         """
@@ -293,58 +317,3 @@ class Window(wx.Frame,Box):
         self._pidx = pids.index(p.GetId())
         self._navbtns[self._pidx].SetBackgroundColour(HRP.VMENU_SELECTED_COLOUR)
         return True
-        
-
-
-class Element(object):
-    """
-    An Element object represents a piece of information to be displayed on screen.
-    """
-
-    ##@var type
-    # int - Type of data
-
-    ##@var value
-    # mixed - Value of data
-
-    ##@var ord
-    # int - Order of data (Where the data belongs on the list)
-
-    def __init__(self):
-        self.type = 0
-        self.value = 0
-        self.ord = 0
-
-class Input(Box):
-    """
-    An Input object is the actual display wrapped around a piece of information (Element) and is
-    a box that can be displayed on screen.
-    @see Element
-    """
-    
-    ##@var type
-    # int - Type of input
-    
-    def __init__(self):
-        self.type = 0
-
-    def createElement(self):
-        """
-        @brief Create a data element from the input box
-        @return Element - The element representation of the input
-        """
-        pass
-
-    def focus(self):
-        """
-        @brief Focus on the input box (this will also focus/show all its parents)
-        @return void
-        """
-        pass
-
-    def value(self):
-        """
-        @brief Get the current value of the input box
-        @return mixed
-        """
-        pass

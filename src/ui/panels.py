@@ -1,3 +1,7 @@
+## @package panels
+#  UI subsystem panel collection.
+#  This module contains all the different types of panel layouts used in the program.
+#  @see Panel
 
 import wx
 from base import *

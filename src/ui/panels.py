@@ -43,9 +43,6 @@ class Panel(wx.Panel,Box):
         """
         pass
 
-    def get_slug(self):
-        return self._slug.lower()
-
     def rmBox(self, b):
         """
         @brief Remove the given box from the panel
@@ -53,18 +50,24 @@ class Panel(wx.Panel,Box):
         @return int - success/fail
         """
         pass
+    
 
+    def get_slug(self):
+        return self._slug.lower()
+    
     def focus(self):
         """
         @brief Focus on the panel (brings parents into focus also)
         @return void
         """
+        pass
 
 
 class TextPanel(Panel):
     """
     A panel that contains only a scrollable label that can display a text passage
     of any length.
+    This particular panel is static and will ignore all requests to add/remove boxes
     """
 
     def __init__(self, parent, slug, text):
@@ -85,3 +88,80 @@ class TextPanel(Panel):
         @param text The text to display on the main display label
         """
         self._disp.SetValue(text)
+
+
+class ListPanel(Panel):
+    """
+    A panel that contains a recursive list
+    """
+    
+    def __init__(self, parent, slug):
+        """
+        
+        """
+        Panel.__init__(self, parent, slug)
+        self._tree = wx.TreeCtrl(self, -1)
+
+
+def create_ctrl(parent, x):
+    t = wx.StaticText(parent, -1, x.value)
+    t.SetBackgroundColour("GREY")
+    return t
+
+class ElementsPanel(Panel):
+    """
+    This panel process an Element list and dynamically create and place
+    an Input list on itself.
+    """
+
+    def __init__(self, parent, slug):
+        """
+        
+        """
+        Panel.__init__(self, parent, slug)
+        self._list = []
+        t = wx.BoxSizer(wx.HORIZONTAL)
+        self._sizer = wx.GridBagSizer(vgap=0, hgap=0)
+        t.Add(self._sizer, 1, wx.EXPAND)
+        self.SetBackgroundColour("RED")
+        self.SetSizer(t)
+
+    def _find_pos(self, i):
+        #Find the row that the iTH item is on
+        r = sum(map(lambda x: x.ratio, self._list[0:i+1]))
+        #Find the first item that is on the last row
+        for n in xrange(i, -1, -1):
+            if r == int(r):
+                break
+            r = r-self._list[n].ratio
+        #Row int(r) contains items n -> i
+        return (int(r), i-n)
+
+    def insert_element(self, i, x):
+        """
+        @param x The Element being added
+        """
+        ctrl = create_ctrl(self, x)
+        x._ctrl = ctrl
+        self._list.insert(i, x)
+        self._sizer.Add(ctrl, pos=self._find_pos(i), span=(1,int(1/x.ratio)), flag=wx.ALL | wx.EXPAND)
+
+    def add_element(self, x):
+        """
+        @param x The Element being added
+        """
+        return self.insert_element(len(self._list), x)
+
+    def rm_element(self, x):
+        """
+        @param x The Element or the index of the Element to remove
+        @retval Boolean success/fail
+        """
+        i = x if type(x)==int else self._list.index(x)
+        if i < 0:
+            return False
+        ctrl = self.pop(i)._ctrl
+        self._list.Detach(ctrl)
+        ctrl.Destroy()
+        return True
+        

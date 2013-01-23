@@ -70,7 +70,7 @@ class Element(object):
     def __init__(self):
         self.type = 0
         self.value = 0
-        self.ord = 0    
+        self.ratio = 1
 
 class Popup(wx.Frame,Box):
     """

@@ -1,0 +1,1 @@
+FoldPanelBar is a freeware created by Andrea Gavana <andrea.gavana@gmail.com>

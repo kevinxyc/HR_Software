@@ -123,19 +123,23 @@ class ElementsPanel(Panel):
         t = wx.BoxSizer(wx.HORIZONTAL)
         self._sizer = wx.GridBagSizer(vgap=0, hgap=0)
         t.Add(self._sizer, 1, wx.EXPAND)
-        self.SetBackgroundColour("RED")
         self.SetSizer(t)
 
     def _find_pos(self, i):
         #Find the row that the iTH item is on
-        r = sum(map(lambda x: x.ratio, self._list[0:i+1]))
-        #Find the first item that is on the last row
-        for n in xrange(i, -1, -1):
-            if r == int(r):
-                break
-            r = r-self._list[n].ratio
+        r, t, n = (0,0,0)
+        for k in xrange(0, i+1, 1):
+            x = self._list[k]
+            #If next item goes on the next row
+            if float(t+x.ratio) > int(r):
+                r = r + 1 #Move to next row
+                t = r - 1 #Add padding because the next item won't fit in space left
+                n = k     #Record the first item on the row
+            t = t + x.ratio
+        r = r - 1
         #Row int(r) contains items n -> i
-        return (int(r), i-n)
+        c = sum(map(lambda x: int(float(x.ratio)/float(0.05)), self._list[n:i]))
+        return (int(r), c)
 
     def insert_element(self, i, x):
         """
@@ -144,7 +148,11 @@ class ElementsPanel(Panel):
         ctrl = create_ctrl(self, x)
         x._ctrl = ctrl
         self._list.insert(i, x)
-        self._sizer.Add(ctrl, pos=self._find_pos(i), span=(1,int(1/x.ratio)), flag=wx.ALL | wx.EXPAND)
+        p, sp = ( self._find_pos(i), (1,int(float(x.ratio)/float(0.05))) )
+        if not self._sizer.CheckForIntersectionPos(p,sp):
+            self._sizer.Add(ctrl, pos=p, span=sp, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL | wx.EXPAND )
+        else:
+            print "OVERLAP"
 
     def add_element(self, x):
         """
@@ -164,4 +172,3 @@ class ElementsPanel(Panel):
         self._list.Detach(ctrl)
         ctrl.Destroy()
         return True
-        

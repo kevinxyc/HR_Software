@@ -5,8 +5,9 @@
 
 import wx
 from base import *
+from inputs import *
 
-class Panel(wx.Panel,Box):
+class Panel(Box, wx.Panel):
     """
     A Panel object is a display layer or "page" that contains an assortment of children elements
     and boxen
@@ -21,48 +22,36 @@ class Panel(wx.Panel,Box):
     ##@var style
     # int - Style for the panel
     
-    def __init__(self, parent, slug, **args):
+    def __init__(self, slug, **kwargs):
         """
+        @param slug The unique slug assigned to this panel (Alternatively, a numeric ID may be used)
         @param parent The container of the Panel
+        @param style The Panel style
         """
-        #(id)
-        wx.Panel.__init__(self, parent=parent);
+        Box.__init__(self)
+        wx.Panel.__init__(self, parent=kwargs.get('parent', stub_win));
+        self._slug = slug
         self.mode = 0
         self.zindex = 0
-        self.style = 0 if 'style' not in args else args['style']
-        self._slug = slug
-        self._parent = parent
+        self.style = kwargs.get('style', 0)
+        self._parent = kwargs.get('parent', None)
 
-    def addBox(self, b, x, y):
-        """
-        @brief Add a box to the panel
-        @param b The box to add
-        @param x Suggested X position 
-        @param y Suggested Y position
-        @return int - sucess/fail
-        """
-        pass
-
-    def rmBox(self, b):
-        """
-        @brief Remove the given box from the panel
-        @param b The box ID/object ref to remove
-        @return int - success/fail
-        """
-        pass
-    
+    def set_parent(self, p):
+        if self._parent == None or self.GetParent().GetId() != self._parent.GetId():
+            self.Reparent(self, p)
+        self._parent = p
 
     def get_slug(self):
         return self._slug.lower()
     
     def focus(self):
         """
-        @brief Focus on the panel (brings parents into focus also)
+        @brief Focus on the panel (brings parents into focus also). The parent must be already set.
         @return void
         """
-        pass
+        self.parent.show_panel(self)
 
-
+        
 class TextPanel(Panel):
     """
     A panel that contains only a scrollable label that can display a text passage
@@ -70,61 +59,49 @@ class TextPanel(Panel):
     This particular panel is static and will ignore all requests to add/remove boxes
     """
 
-    def __init__(self, parent, slug, text):
+    def __init__(self, slug, text, **kwargs):
         """
         @note ...
         """
-        Panel.__init__(self, parent, slug)
+        Panel.__init__(self, slug, **kwargs)
         v0 = wx.BoxSizer(wx.VERTICAL)
         self._disp = wx.TextCtrl(self, -1, style=wx.TE_READONLY | wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_NOHIDESEL)
         self._disp.SetBackgroundColour(self.GetBackgroundColour())
-        self.setText(text)
+        self.set_text(text)
         v0.Add(self._disp, 1, wx.EXPAND)
         self.SetSizer(v0)
 
         
-    def setText(self, text):
+    def set_text(self, text):
         """
         @param text The text to display on the main display label
         """
         self._disp.SetValue(text)
 
 
-class ListPanel(Panel):
-    """
-    A panel that contains a recursive list
-    """
-    
-    def __init__(self, parent, slug):
-        """
-        
-        """
-        Panel.__init__(self, parent, slug)
-        self._tree = wx.TreeCtrl(self, -1)
-
-
-def create_ctrl(parent, x):
-    t = wx.StaticText(parent, -1, x.value)
-    t.SetBackgroundColour("GREY")
-    return t
-
-class ElementsPanel(Panel):
+class InputPanel(Panel):
     """
     This panel process an Element list and dynamically create and place
     an Input list on itself.
     """
 
-    def __init__(self, parent, slug):
+    def __init__(self, slug, **kwargs):
         """
-        
+        @param slug @see Panel
         """
-        Panel.__init__(self, parent, slug)
+        Panel.__init__(self, slug, **kwargs)
+        self._cb = kwargs.get('callback', kwargs.get('cb', lambda vals: None))
         self._list = []
+
         t = wx.BoxSizer(wx.HORIZONTAL)
         self._sizer = wx.GridBagSizer(vgap=0, hgap=0)
+        self._sizer.SetFlexibleDirection(wx.BOTH)
         t.Add(self._sizer, 1, wx.EXPAND)
         self.SetSizer(t)
-
+        
+    def _push_err_msg(self, msg):
+        pass
+    
     def _find_pos(self, i):
         #Find the row that the iTH item is on
         r, t, n = (0,0,0)
@@ -145,9 +122,22 @@ class ElementsPanel(Panel):
         """
         @param x The Element being added
         """
-        ctrl = create_ctrl(self, x)
+
+        def set_element_val(e, val):
+            e.value = val
+            r = self._cb(e, val)
+            if not (type(r) == bool and r == True):
+                self._push_err_msg(r)
+                return False
+            else:
+                return True
+            
+        ctrl = create_input(self, x)
+        ctrl.add_cb(lambda val: set_element_val(x,val))
         x._ctrl = ctrl
+        
         self._list.insert(i, x)
+        
         p, sp = ( self._find_pos(i), (1,int(float(x.ratio)/float(0.05))) )
         if not self._sizer.CheckForIntersectionPos(p,sp):
             self._sizer.Add(ctrl, pos=p, span=sp, flag=wx.ALL | wx.ALIGN_CENTER_VERTICAL | wx.EXPAND )
@@ -172,3 +162,9 @@ class ElementsPanel(Panel):
         self._list.Detach(ctrl)
         ctrl.Destroy()
         return True
+
+    def get_values(self):
+        """
+        @brief Returns the Element list contained in this panel with its value(s) modified.
+        """
+        return self._list

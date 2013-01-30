@@ -5,7 +5,7 @@
 
 import wx
 import defs as HRP
-from ui import hr_app
+from ui import hr_app, stub_win
 
 def launch_win(win):
     """    
@@ -16,11 +16,38 @@ def launch_win(win):
     @return None
     """
     global hr_app
+    global stub_win
+    def kill_all_win(e):
+        stub_win.Destroy()
+        e.GetEventObject().Destroy()
+    win.Bind(wx.EVT_CLOSE, kill_all_win)
     win.Show()
     hr_app.SetTopWindow(win)
     hr_app.MainLoop()
 
+class Element(object):
+    """
+    An Element object represents a piece of information to be displayed on screen.
+    """
 
+    ##@var type
+    # int - Type of data
+
+    ##@var value
+    # mixed - Value of data
+
+    ##@var ratio
+    # int - The ratio of the data size represented as a percentage, where 1.0 is 100%.
+    # note that this may correspond to the actual Input size/any input limits.
+
+    def __init__(self, **kwargs):
+        self.type = kwargs.get('type', 0)
+        self.name = kwargs.get('name', "")
+        self.value = kwargs.get('value', 0)
+        self.ratio = kwargs.get('ratio', 1)
+        self.desc = kwargs.get('desc', self.name)
+        self.opts = kwargs.get('opts', [])
+    
 class Box(object):
     """
     A Box is the base unit of display
@@ -53,31 +80,13 @@ class Box(object):
         """       
         pass
 
-class Element(object):
-    """
-    An Element object represents a piece of information to be displayed on screen.
-    """
-
-    ##@var type
-    # int - Type of data
-
-    ##@var value
-    # mixed - Value of data
-
-    ##@var ord
-    # int - Order of data (Where the data belongs on the list)
-
-    def __init__(self):
-        self.type = 0
-        self.value = 0
-        self.ratio = 1
-
-class Popup(wx.Frame,Box):
+class Popup(Box, wx.Frame):
     """
     A popup window
     """
-    def __init__(self, parent, title, **args):
-        wx.Frame.__init__(self, parent, -1, title, **args)
+    def __init__(self, title, **kwargs):
+        Box.__init__(self)
+        wx.Frame.__init__(self, kwargs.pop('parent', None), -1, title, **kwargs)
         self._sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.SetSizer(self._sizer)
 
@@ -89,13 +98,14 @@ class Popup(wx.Frame,Box):
         self.Layout()
 
 
-class Window(wx.Frame,Box):
+class Window(Box, wx.Frame):
     """
     A Window is a special box at the top level    
     """
 
     def __init__(self, title):
         #(parent, id, title)
+        Box.__init__(self)
         wx.Frame.__init__(self, None, -1, title)
         self._panes = []
         self._navbtns = []
@@ -115,15 +125,19 @@ class Window(wx.Frame,Box):
         h0.Add(self._vmenu, 0, wx.ALIGN_LEFT)
 
         #Top panel board + Bottom terminal
-        self._term = wx.TextCtrl(self, -1, style=wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_RICH | wx.TE_CHARWRAP | wx.TE_READONLY)
-        self._term.SetMinSize((-1,HRP.TERM_HEIGHT))
+        #@TODO Implement terminal
+        #self._term = wx.TextCtrl(None, -1, style=wx.TE_MULTILINE | wx.TE_AUTO_URL | wx.TE_RICH | wx.TE_CHARWRAP | wx.TE_READONLY)
+        #self._term.SetMinSize((-1,HRP.TERM_HEIGHT))
         v1.Add(v1v0, 1, wx.EXPAND | wx.ALIGN_TOP)
-        v1.Add(self._term, 0.3, wx.EXPAND | wx.ALIGN_BOTTOM)
+        #Terminal not yet implemented
+        #v1.Add(self._term, 0.3, wx.EXPAND | wx.ALIGN_BOTTOM)
         h0.Add(v1, 1, wx.EXPAND | wx.ALIGN_RIGHT)
 
         #Create log
-        self._log = wx.LogTextCtrl(self._term)
-        self._log.write = self._log.LogText
+        #self._log = wx.LogTextCtrl(self._term)
+        #self._log.write = self._log.LogText
+        import sys
+        self._log = sys.stderr
         
         self._sizer = v1v0
         self.SetSizer(h0)
@@ -178,7 +192,7 @@ class Window(wx.Frame,Box):
         d.show_panel(p)
         d.Show()
 
-    def dialog(self, t, **args):
+    def dialog(self, t, **kwargs):
         """    
         mixed dialoge(String msg, int type)
         Creates a dialoge box of a given type with the given message.
@@ -189,10 +203,9 @@ class Window(wx.Frame,Box):
         dtype = t+"Dialog"
         res = None
         if hasattr(wx, dtype):
-            if 'caption' not in args:
-                args['caption'] = args['message']
+            kwargs['caption'] = kwargs.get('caption', kwargs['message'])
             cls = getattr(wx, dtype)
-            dlg = cls(self, **args)
+            dlg = cls(self, **kwargs)
             res = dlg.ShowModal()
             if  res == wx.ID_OK:
                 resf = ['GetValue', 'GetFilenames', 'GetPath', 'GetData', 'GetSelections', 'GetStringSelection']
